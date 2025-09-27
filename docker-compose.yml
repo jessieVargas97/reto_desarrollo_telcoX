@@ -1,0 +1,45 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: telcox_db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: telcox
+      MYSQL_USER: telcox
+      MYSQL_PASSWORD: telcoxpass
+    ports:
+      - "3307:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    container_name: telcox_api
+    environment:
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_USER: telcox
+      MYSQL_PASSWORD: telcoxpass
+      MYSQL_DB: telcox
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # web:
+  #   build: ./frontend
+  #   container_name: telcox_web
+  #   ports:
+  #     - "4200:80"
+  #   depends_on:
+  #     - api
+
+volumes:
+  dbdata:
