@@ -56,13 +56,15 @@ cd reto_desarrollo_vargas
 - Frontend Angular (Nginx) → http://localhost:4200
 
 ## BD
-┌───────────────────────────┐       ┌────────────────────────────┐
-│        customers          │       │        consumption         │
-├───────────────────────────┤       ├────────────────────────────┤
-│ id (PK)                   │◄──────┤ id (PK)                    │
-│ msisdn (UNIQUE, NOT NULL) │       │ msisdn (FK → customers)    │
-│ name (NOT NULL)           │       │ balance (FLOAT, default 0) │
-└───────────────────────────┘       │ data_mb (FLOAT, default 0) │
-                                    │ minutes (INT, default 0)   │
-                                    │ updated_at (DATETIME)      │
-                                    └────────────────────────────┘
+
++-------------------+         +---------------------+
+|    customers      |         |    consumption      |
++-------------------+         +---------------------+
+| id (PK)           |◄───┐   | id (PK)             |
+| msisdn (UNIQUE)   |    └───| msisdn (FK)         |
+| name              |        | balance (FLOAT)     |
++-------------------+        | data_mb (FLOAT)     |
+                             | minutes (INT)       |
+                             | updated_at (DATETIME)|
+                             +---------------------+
+
