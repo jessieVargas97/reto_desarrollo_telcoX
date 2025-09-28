@@ -1,50 +1,54 @@
-<div class="container py-5">
-  <h1 class="mb-4">{{ title }}</h1>
-  <div class="card p-4 mb-4">
-    <div class="row g-2 align-items-end">
-      <div class="col-md-6">
-        <label class="form-label">MSISDN</label>
-        <input class="form-control" [(ngModel)]="msisdn" placeholder="5939xxxxxxxx">
-      </div>
-      <div class="col-md-3 d-grid">
-        <button class="btn btn-primary" (click)="fetch()" [disabled]="loading">
-          {{ loading ? 'Consultando...' : 'Consultar' }}
-        </button>
-      </div>
-      <div class="col-md-3 d-grid">
-        <button class="btn btn-outline-warning" (click)="simulate()">Simular Consumo</button>
-      </div>
-    </div>
-    <div *ngIf="error" class="alert alert-danger mt-3">{{ error }}</div>
+<div class="container" style="max-width: 900px; margin: 24px auto;">
+  <h1>{{ title }}</h1>
+
+  <div style="display:flex; gap:8px; align-items:center; margin:12px 0;">
+    <input [(ngModel)]="msisdn" class="form-control" placeholder="Filtrar por MSISDN (opcional)" />
+    <button class="btn btn-primary" (click)="fetch().subscribe()">Buscar</button>
+    <button class="btn btn-outline-secondary" (click)="clearFilter()">Limpiar</button>
+    <button class="btn btn-outline-info" (click)="startPolling()">Reiniciar polling</button>
   </div>
-  <div *ngIf="data" class="row g-4">
-    <div class="col-md-4">
-      <div class="card p-4 h-100">
-        <h5 class="mb-2">Cliente</h5>
-        <p class="m-0 fw-bold">{{ data.name }}</p>
-        <small class="text-muted">MSISDN: {{ data.msisdn }}</small>
-      </div>
-    </div>
-    <div class="col-md-8">
-      <div class="card p-4">
-        <div class="row text-center">
-          <div class="col-4">
-            <div class="h2 mb-0">{{ data.balance | number:'1.2-2' }}</div>
-            <div class="text-muted">Saldo (USD)</div>
-          </div>
-          <div class="col-4">
-            <div class="h2 mb-0">{{ data.data_mb | number:'1.0-0' }}</div>
-            <div class="text-muted">Datos (MB)</div>
-          </div>
-          <div class="col-4">
-            <div class="h2 mb-0">{{ data.minutes }}</div>
-            <div class="text-muted">Minutos</div>
-          </div>
-        </div>
-        <div class="text-end mt-3">
-          <span class="badge bg-secondary">Actualizado: {{ data.updated_at | date:'short' }}</span>
-        </div>
-      </div>
+
+  <div *ngIf="loading">Cargando…</div>
+  <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+
+  <!-- Detalle -->
+  <div *ngIf="item">
+    <h3>Cliente</h3>
+    <table class="table table-striped">
+      <tbody>
+        <tr><th>MSISDN</th><td>{{ item.msisdn }}</td></tr>
+        <tr><th>Nombre</th><td>{{ item.name }}</td></tr>
+        <tr><th>Saldo</th><td>{{ item.balance | number:'1.2-2' }}</td></tr>
+        <tr><th>Datos (MB)</th><td>{{ item.data_mb | number:'1.0-2' }}</td></tr>
+        <tr><th>Minutos</th><td>{{ item.minutes }}</td></tr>
+        <tr><th>Actualizado</th><td>{{ item.updated_at }}</td></tr>
+      </tbody>
+    </table>
+    <div style="display:flex; gap:8px;">
+      <button class="btn btn-warning" (click)="simulateOne()">Simular consumo</button>
+      <button class="btn btn-success" (click)="updatePartial()">Actualizar parcial (demo)</button>
     </div>
   </div>
+
+  <!-- Lista -->
+  <div *ngIf="!item && list?.length">
+    <h3>Clientes</h3>
+    <table class="table table-hover">
+      <thead>
+        <tr><th>MSISDN</th><th>Nombre</th><th>Saldo</th><th>Datos (MB)</th><th>Minutos</th><th>Actualizado</th></tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let c of list">
+          <td>{{ c.msisdn }}</td>
+          <td>{{ c.name }}</td>
+          <td>{{ c.balance | number:'1.2-2' }}</td>
+          <td>{{ c.data_mb | number:'1.0-2' }}</td>
+          <td>{{ c.minutes }}</td>
+          <td>{{ c.updated_at }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div *ngIf="!item && !list?.length && !loading"><em>No hay datos.</em></div>
 </div>

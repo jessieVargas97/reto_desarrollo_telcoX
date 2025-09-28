@@ -36,10 +36,17 @@ consumption_list_model = api.model("ConsumptionList", {
     "results": fields.List(fields.Nested(consumption_model))
 })
 
+consumption_patch_model = api.model("ConsumptionPatchBody", {
+    "msisdn":  fields.String(required=True, description="Cliente a actualizar"),
+    "name":    fields.String(required=False),
+    "balance": fields.Float(required=False),
+    "data_mb": fields.Float(required=False),
+    "minutes": fields.Integer(required=False),
+})
+
 error_model = api.model("Error", {"message": fields.String})
 
 ## Endpoints ##
-
 
 #Retorna el estado del servicio
 @ns.route("/health")
@@ -101,18 +108,67 @@ class ConsumptionView(Resource):
         finally:
             db.close()
 
-#Permite realiar una simulacion de actualizacion de datos para ser consultados posteriormente
+#Permite realizar una simulacion de actualizacion de datos para ser consultados posteriormente
 @ns.route("/consumption/simulate")
 class ConsumptionSim(Resource):
+    @ns.expect(consumption_patch_model, validate=False)  # <-- new model
     @ns.response(200, "OK")
+    @ns.response(404, "No encontrado", model=error_model)
+    @ns.response(400, "Solicitud inválida", model=error_model)
     def post(self):
         payload = (request.get_json(silent=True) or {})
         msisdn = payload.get("msisdn")
+
+        allowed_keys = ("name", "balance", "data_mb", "minutes")
+        provided = {k: payload.get(k) for k in allowed_keys if k in payload and payload.get(k) is not None}
+
+        direct_update = len(provided) > 0
+
         db = SessionLocal()
         try:
+            if direct_update:
+                if not msisdn:
+                    return {"message": "msisdn es requerido para actualizaciones"}, 400
+
+                cust = db.execute(select(Customer).where(Customer.msisdn == msisdn)).scalar_one_or_none()
+                if not cust:
+                    return {"message": "Cliente no encontrado"}, 404
+
+                cons = db.execute(
+                    select(Consumption)
+                    .where(Consumption.msisdn == msisdn)
+                    .order_by(Consumption.updated_at.desc())
+                ).scalar_one_or_none()
+                if not cons:
+                    return {"message": "Consumo no encontrado para este cliente"}, 404
+
+                # SET: solo lo presente en el body
+                if "name" in provided:
+                    cust.name = str(provided["name"])
+                if "balance" in provided:
+                    cons.balance = float(provided["balance"])
+                if "data_mb" in provided:
+                    cons.data_mb = float(provided["data_mb"])
+                if "minutes" in provided:
+                    cons.minutes = int(provided["minutes"])
+
+                # Boundaries y timestamp controlado por el server
+                if cons.balance is not None:
+                    cons.balance = max(0.0, float(cons.balance))
+                if cons.data_mb is not None:
+                    cons.data_mb = max(0.0, float(cons.data_mb))
+                if cons.minutes is not None:
+                    cons.minutes = max(0, int(cons.minutes))
+                cons.updated_at = datetime.utcnow()
+
+                db.commit()
+                return {"updated": 1}, 200
+
+            # ---- Sin campos a actualizar ----
             q = select(Consumption)
             if msisdn:
                 q = q.where(Consumption.msisdn == msisdn)
+
             rows = db.execute(q).scalars().all()
             changed = 0
             for r in rows:
@@ -121,8 +177,10 @@ class ConsumptionSim(Resource):
                 r.balance = max(0.0, r.balance - random.uniform(0.01, 0.15))
                 r.updated_at = datetime.utcnow()
                 changed += 1
+
             db.commit()
             return {"updated": changed}, 200
+
         except Exception as e:
             db.rollback()
             return {"message": f"Error: {e}"}, 500
